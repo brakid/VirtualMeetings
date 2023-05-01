@@ -1,0 +1,32 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>python-socketio test</title>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js" integrity="sha256-oP6HI9z1XaZNBrJURtCoUT5SUnxFr8s3BzRl+cbzUq8=" crossorigin="anonymous"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
+    <script type="text/javascript" charset="utf-8">
+        $(document).ready(function(){
+            let socket = io.connect('localhost:8080', { withCredentials: true });
+
+            socket.on('connect', function() {
+                console.log('Connected');
+            });
+            socket.on('disconnect', function() {
+                console.log('Disconnected');
+            });
+            socket.on('map_init', function(msg) {
+                let mapText = '';
+                for (let row = 0; row < msg.mapHeight; row++) {
+                    mapText += msg.data[row].join(' ') + '\n';
+                }
+                $('#map').text(mapText);
+                console.log(msg);
+            });
+        });
+    </script>
+</head>
+<body>
+    <h2>Receive:</h2>
+    <pre id='map'></pre>
+</body>
+</html>
