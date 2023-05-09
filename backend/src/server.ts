@@ -4,7 +4,7 @@ import { createServer } from 'http';
 import * as path from 'path';
 import express, { Express, Request, Response } from 'express';
 import { basicAuthHandler } from './authorization';
-import { LoginData, USER_JOIN_EVENT, USER_LEAVE_EVENT, USER_UPDATE_EVENT } from './types';
+import { LoginData, USER_JOIN_EVENT, USER_LEAVE_EVENT, USER_MESSAGE_EVENT, USER_UPDATE_EVENT, UserUpdate } from './types';
 
 const app: Express = express();
 
@@ -31,8 +31,12 @@ io.on('connect', socket => {
     handler.handleOnLeave(socket);
   });
   socket.on(USER_UPDATE_EVENT, (data) => {
-    console.log(`User ${socket.id} sent an update`);
-    handler.handleUpdate(socket, data);
+    console.log(`User ${socket.id} sent an update: ${JSON.stringify(data)}`);
+    handler.handleUpdate(socket, data as UserUpdate);
+  });
+  socket.on(USER_MESSAGE_EVENT, (data) => {
+    console.log(`User ${socket.id} sent a message: ${JSON.stringify(data)}`);
+    handler.handleMessage(socket, data as string);
   });
 });
 

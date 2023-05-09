@@ -105,6 +105,10 @@
                 timestamp = msg.timestamp + 1;
             });
 
+            socket.on('message', function(msg) {
+                console.log(msg);
+            });
+
             const color = `#${Math.floor(Math.random() * 256).toString(16).padStart(2, '0')}${Math.floor(Math.random() * 256).toString(16).padStart(2, '0')}${Math.floor(Math.random() * 256).toString(16).padStart(2, '0')}`;
 
             $('button#login').on('click', () => socket.emit('user_join', { name: $('#name').val(), color }));
