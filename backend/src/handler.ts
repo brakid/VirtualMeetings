@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
-import { DATA_UPDATE_EVENT, Direction, InteractUpdate, LoginData, MAP_INIT_EVENT, MapData, MapTile, MapTileTypes, MoveUpdate, Position, UpdateType, UserData, UserTile, UserUpdate } from "./types";
+import { DATA_UPDATE_EVENT, Direction, InteractUpdate, LoginData, MAP_INIT_EVENT, MESSAGE_EVENT, MapData, MapTile, MapTileTypes, Message, MoveUpdate, Position, UpdateType, UserData, UserTile, UserUpdate } from "./types";
 import { createMapTile, getNewPosition, positionToString, sendError, sendErrorAndDisconnect } from "./helper";
 import { Mutex } from "async-mutex";
 
@@ -66,9 +66,29 @@ class Users {
   }
 }
 
+class Messages {
+  messages: Message[];
+
+  constructor() {
+    this.messages = [];
+  }
+
+  addMessage(message: Message): void {
+    this.messages.push(message);
+    if (this.messages.length > 100) {
+      this.messages.shift();
+    }
+  }
+
+  getMessages(): Message[] {
+    return this.messages;
+  }
+}
+
 export class Handler {
   io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>;
   users: Users;
+  messages: Messages;
   internalId: number;
   mapData: MapData;
   mutex: Mutex;
@@ -78,6 +98,7 @@ export class Handler {
       mapTiles: MapTile[][]) {
     this.io = io;
     this.users = new Users();
+    this.messages = new Messages();
     this.mapData = {
       mapWidth: mapTiles[0].length,
       mapHeight: mapTiles.length,
@@ -90,17 +111,37 @@ export class Handler {
   handleOnJoin(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>, loginData: LoginData): void {
     socket.emit(MAP_INIT_EVENT, this.mapData);
     this.addUser(socket, loginData);
-  };
+    this.sendMessages(socket);
+  }
 
   handleOnLeave(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>): void {
     this.removeUser(socket);
-  };
+  }
 
   handleUpdate(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>, userUpdate: UserUpdate): void {
     switch(userUpdate.type) {
       case UpdateType.MOVE: return this.moveUser(socket, userUpdate as MoveUpdate);
       case UpdateType.INTERACT: return this.handleInteraction(socket, userUpdate as InteractUpdate);
     }
+  }
+
+  handleMessage(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>, messageContent: string): void {
+    const user = this.users.getUserById(socket.id);
+      if (!!!user) {
+        sendError(socket, 'User not found, ignoring update');
+        return;
+      }
+
+    const message: Message = {
+      senderId: socket.id,
+      senderName: user.name,
+      timestamp: new Date().getTime() / 1000,
+      content: messageContent
+    };
+
+    this.messages.addMessage(message);
+
+    this.broadcastMessages();
   }
 
   private addUser(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>, loginData: LoginData): void {
@@ -124,12 +165,7 @@ export class Handler {
         sendErrorAndDisconnect(socket, 'Invalid user, rejecting client');
       }
 
-      // send updated user list
-      const userData: UserData = {
-        timestamp: this.internalId++,
-        userTiles: this.users.getUsers()
-      }
-      this.io.emit(DATA_UPDATE_EVENT, userData);
+      this.broadcastState();
     } finally {
       this.mutex.release();
     }
@@ -141,15 +177,14 @@ export class Handler {
       
       this.users.removeUser(socket.id);
 
-      // send updated user list
-      const userData: UserData = {
-        timestamp: this.internalId++,
-        userTiles: this.users.getUsers()
-      }
-      this.io.emit(DATA_UPDATE_EVENT, userData);
+      this.broadcastState();
     } finally {
       this.mutex.release();
     }
+  }
+
+  handleInteraction(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>, interactUpdate: InteractUpdate): void {
+    console.log('Interaction');
   }
 
   private moveUser(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>, moveUpdate: MoveUpdate): void {
@@ -183,19 +218,10 @@ export class Handler {
         user.position = newPosition;
       }
 
-      // send updated user list
-      const userData: UserData = {
-        timestamp: this.internalId++,
-        userTiles: this.users.getUsers()
-      }
-      this.io.emit(DATA_UPDATE_EVENT, userData);
+      this.broadcastState();
     } finally {
       this.mutex.release();
     }
-  }
-
-  handleInteraction(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>, interactUpdate: InteractUpdate): void {
-    console.log('Interaction');
   }
 
   private findSpawnPosition(): Position | undefined {
@@ -232,5 +258,22 @@ export class Handler {
       timestamp: this.internalId,
       userTiles: this.users.getUsers()
     });
+  }
+
+  private sendMessages(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>): void {
+    socket.emit(MESSAGE_EVENT, this.messages.getMessages());
+  }
+
+  private broadcastState(): void {
+    // send updated user list
+    const userData: UserData = {
+      timestamp: this.internalId++,
+      userTiles: this.users.getUsers()
+    }
+    this.io.emit(DATA_UPDATE_EVENT, userData);
+  }
+
+  private broadcastMessages(): void {
+    this.io.emit(MESSAGE_EVENT, this.messages.getMessages());
   }
 }

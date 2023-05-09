@@ -52,6 +52,8 @@ export const DATA_UPDATE_EVENT = 'data_update'; // main event used by the server
 export const USER_JOIN_EVENT = 'user_join'; // new User joining, sends login data -> add User & send DATA_UPDATE_EVENT
 export const USER_LEAVE_EVENT = 'disconnect'; // remove from UserData -> send DATA_UPDATE_EVENT
 export const USER_UPDATE_EVENT = 'user_update'; // user moves or interacts -> send DATA_UPDATE_EVENT if valid
+export const USER_MESSAGE_EVENT = 'user_message';
+export const MESSAGE_EVENT = 'message';
 export const ERROR = 'error'; // user moves or interacts -> send DATA_UPDATE_EVENT if valid
 
 // TODO(hschupp): add more data required upon login in
@@ -74,3 +76,10 @@ export interface InteractUpdate extends BaseUpdate {
 };
 
 export type UserUpdate = MoveUpdate | InteractUpdate;
+
+export interface Message {
+  senderId: string,
+  senderName: string,
+  timestamp: number,
+  content: string
+};
