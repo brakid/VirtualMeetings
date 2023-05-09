@@ -5,28 +5,124 @@
     <script src="https://code.jquery.com/jquery-3.6.4.min.js" integrity="sha256-oP6HI9z1XaZNBrJURtCoUT5SUnxFr8s3BzRl+cbzUq8=" crossorigin="anonymous"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
     <script type="text/javascript" charset="utf-8">
+        const tileSize = 31;
         $(document).ready(function(){
+            function renderUser(user) {
+                const canvas = document.getElementById('map2');
+                const context = canvas.getContext('2d');
+                context.strokeColor = 'black';
+                context.fillStyle = user.color;
+                context.beginPath();
+                context.ellipse(user.position.x * (tileSize+1) + 1 + tileSize/2, user.position.y * (tileSize+1) + tileSize/2, 10, 10, 0, 0, Math.PI * 2);
+                context.fill();
+                context.fillStyle = 'black';
+                switch(user.direction) {
+                    case 'UP': {
+                        context.fillRect(user.position.x * (tileSize+1) + tileSize/2, user.position.y * (tileSize+1) + 1, 2, 10);
+                        break;
+                    }
+                    case 'RIGHT': {
+                        context.fillRect((user.position.x+1) * (tileSize+1) - 10, user.position.y * (tileSize+1) + tileSize/2, 10, 2);
+                        break;
+                    }
+                    case 'DOWN': {
+                        context.fillRect(user.position.x * (tileSize+1) + tileSize/2, (user.position.y+1) * (tileSize+1) - 10, 2, 10);
+                        break;
+                    }
+                    case 'LEFT': {
+                        context.fillRect(user.position.x * (tileSize+1) + 1, user.position.y * (tileSize+1) + tileSize/2, 10, 2);
+                        break;
+                    }
+                }
+            }
+
+            function render(map, users) {
+                const canvas = document.getElementById('map2');
+                const context = canvas.getContext('2d');
+                const width = map.mapWidth * (tileSize+1) + 1;
+                const height = map.mapHeight * (tileSize+1) + 1;
+                $(canvas).attr('width', width);
+                $(canvas).attr('height', height);
+
+                context.fillStyle ='gray';
+                context.fillRect(0, 0, width, height);
+
+                const mapTiles = map.data.map(row => row.map(field => field.type));
+                for (let row = 0; row < map.mapHeight; row++) {
+                    for (let col = 0; col < map.mapWidth; col++) {
+                        switch(mapTiles[row][col]) {
+                            case 'EMPTY': {
+                                context.fillStyle ='white';
+                                break;
+                            }
+                            case 'WALL': {
+                                context.fillStyle ='darkgray';
+                                break;
+                            }
+                            case 'DOOR': {
+                                context.fillStyle ='brown';
+                                break;
+                            }
+                        }
+
+                        context.fillRect(col * (tileSize+1) + 1, row * (tileSize+1) + 1, tileSize, tileSize);
+                    }
+                }
+
+                users.forEach(user => renderUser(user));
+            }
+
             let socket = io.connect('localhost:8080', { withCredentials: true });
+            let map = [];
+            let timestamp = -1;
 
             socket.on('connect', function() {
                 console.log('Connected');
             });
+
+            socket.on('error', function(data) {
+                console.log('Error: ' + JSON.stringify(data));
+            });
+
             socket.on('disconnect', function() {
                 console.log('Disconnected');
             });
             socket.on('map_init', function(msg) {
+                map = msg
+                render(map, []);
+
                 let mapText = '';
                 for (let row = 0; row < msg.mapHeight; row++) {
-                    mapText += msg.data[row].join(' ') + '\n';
+                    mapText += msg.data[row].map(v => v.type).join(' ') + '\n';
                 }
                 $('#map').text(mapText);
                 console.log(msg);
             });
+
+            socket.on('data_update', function(msg) {
+                console.log(msg);
+                render(map, msg.userTiles);
+                timestamp = msg.timestamp + 1;
+            });
+
+            const color = `#${Math.floor(Math.random() * 256).toString(16).padStart(2, '0')}${Math.floor(Math.random() * 256).toString(16).padStart(2, '0')}${Math.floor(Math.random() * 256).toString(16).padStart(2, '0')}`;
+
+            $('button#login').on('click', () => socket.emit('user_join', { name: $('#name').val(), color }));
+            $('button#left').on('click', () => socket.emit('user_update', { type: 'MOVE', direction: 'LEFT', timestamp }));
+            $('button#right').on('click', () => socket.emit('user_update', { type: 'MOVE', direction: 'RIGHT', timestamp }));
+            $('button#up').on('click', () => socket.emit('user_update', { type: 'MOVE', direction: 'UP', timestamp }));
+            $('button#down').on('click', () => socket.emit('user_update', { type: 'MOVE', direction: 'DOWN', timestamp }));
         });
     </script>
 </head>
 <body>
     <h2>Receive:</h2>
+    <canvas id='map2'></canvas>
     <pre id='map'></pre>
+    <button id='login'>Login</button><input type="text" id="name" />
+    <button id='left'>Left</button>
+    <button id='right'>Right</button>
+    <button id='up'>Up</button>
+    <button id='down'>Down</button>
 </body>
 </html>
