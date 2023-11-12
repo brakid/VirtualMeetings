@@ -1,0 +1,23 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>python-socketio test</title>
+    <script type="text/javascript" charset="utf-8">
+        const socket = new WebSocket("ws://localhost:3000/chat");
+        socket.onopen = () => {
+            //Subscribe to the channel
+            socket.send(JSON.stringify({"command": "subscribe","identifier":"{\"channel\":\"the-group-chat\"}"}))
+        };
+
+        socket.onmessage = (event) => {
+            console.log(event.data);
+        };
+    </script>
+</head>
+
+<body>
+    Hello World
+</body>
+
+</html>
