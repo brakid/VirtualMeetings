@@ -11,28 +11,33 @@ app = socketio.WSGIApp(sio, static_files={
 MAP = np.zeros((5, 5))
 USERS = {}
 
-def find_position():
+def find_position() -> (int, int):
     global MAP, USERS
     found = False
     while not found:
-        x, y = np.random.randint(0, MAP.shape, len(MAP.shape))
+        x, y = np.random.randint(0, MAP.shape, 2)
+        x, y = int(x), int(y)
         for user_position in USERS.values():
             if user_position == (x, y):
                 continue
         break
-    return int(x), int(y)
+    return x, y
+
+def encode_positions(users: dict) -> list:
+    return [ { 'user_id': user_id, 'position': { 'x': position[0], 'y': position[1] } } for user_id, position in users.items() ]
 
 @sio.event
-def connect(sid, environ):
-    print('connect ', sid)
+def connect(sid, env):
+    print('connect ', sid, env)
     position = find_position()
     USERS[sid] = position
-    res = { 'position': { 'x': position[0], 'y': position[1] } }
-    sio.emit('initiate', { 'user_id': sid, 'position': { 'x': position[0], 'y': position[1] } })
+    print(USERS)
+    sio.emit('initiate', { 'user_id': sid })
+    sio.emit('new_joiner', encode_positions(USERS))
 
 @sio.event
-def message(sid, data):
-    print('message ', sid, data)
+def message(sid, event, data):
+    print('message ', sid, event, data)
     sio.emit('acknowledged', True, room=sid)
 
 @sio.event

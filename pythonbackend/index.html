@@ -25,10 +25,10 @@
     <script>
       const socket = io();
       socket.on('initiate', (msg) => {
-        console.log(msg);
+        console.log('User Id: ' + JSON.stringify(msg));
       });
-      socket.on('new', (msg) => {
-        console.log(msg);
+      socket.on('new_joiner', (msg) => {
+        console.log('Users: ' + JSON.stringify(msg));
         socket.send('message', 'Hello World');
       });
       socket.on('acknowledged', (msg) => {
