@@ -29,7 +29,7 @@
       });
       socket.on('update', (msg) => {
         console.log('Users: ' + JSON.stringify(msg));
-        socket.send('move', { 'direction': 'up' });
+        //socket.send('move', { 'direction': 'up' });
       });
       socket.on('acknowledged', (msg) => {
         console.log('Ack: ' + msg);

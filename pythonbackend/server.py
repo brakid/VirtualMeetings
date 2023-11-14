@@ -9,8 +9,9 @@ app = socketio.WSGIApp(sio, static_files={
     '/': {'content_type': 'text/html', 'filename': 'index.html'}
 })
 
-MAP = np.zeros((5, 5))
+MAP = np.zeros((1, 1)).astype(np.int8)
 USERS = {}
+MAX_ATTEMPTS = 5
 
 class Direction(StrEnum):
     UP = auto()
@@ -19,17 +20,25 @@ class Direction(StrEnum):
     RIGHT = auto()
 
 def find_position() -> (int, int):
-    global MAP, USERS
-    while True:
+    global MAP, USERS, MAX_ATTEMPTS
+    attempt = MAX_ATTEMPTS
+    x, y = None, None
+    found = False
+    while attempt > 0:
+        attempt -= 1
         x, y = np.random.randint(0, MAP.shape, 2)
         x, y = int(x), int(y)
-        if MAP[x, y] == 0:
-            break
+        if MAP[x, y] != 0:
+            continue
         for user_position in USERS.values():
             if user_position == (x, y):
                 continue
+        found = True
         break
-    return x, y
+    if found:
+        return x, y
+    else:
+        return None
 
 def encode_positions(users: dict) -> list:
     return [ { 'user_id': user_id, 'position': { 'x': position[0], 'y': position[1] } } for user_id, position in users.items() ]
@@ -62,10 +71,13 @@ def move(user_id: str, direction: Direction) -> bool:
 def connect(sid, env):
     print('connect', sid)
     position = find_position()
-    USERS[sid] = position
-    print(USERS)
-    sio.emit('initiate', { 'user_id': sid })
-    sio.emit('update', encode_positions(USERS))
+    if position:
+        USERS[sid] = position
+        print(USERS)
+        sio.emit('initiate', { 'user_id': sid, 'map': MAP.tolist() })
+        sio.emit('update', encode_positions(USERS))
+    else:
+        sio.emit('rejected', False, room=sid)
 
 @sio.event
 def message(sid, event, data):
@@ -83,8 +95,9 @@ def message(sid, event, data):
 @sio.event
 def disconnect(sid):
     print('disconnect ', sid)
-    del USERS[sid]
-    sio.emit('update', encode_positions(USERS))
+    if sid in USERS:
+        del USERS[sid]
+        sio.emit('update', encode_positions(USERS))
 
 if __name__ == '__main__':
     eventlet.wsgi.server(eventlet.listen(('', 5000)), app)
