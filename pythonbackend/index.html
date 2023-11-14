@@ -27,12 +27,15 @@
       socket.on('initiate', (msg) => {
         console.log('User Id: ' + JSON.stringify(msg));
       });
-      socket.on('new_joiner', (msg) => {
+      socket.on('update', (msg) => {
         console.log('Users: ' + JSON.stringify(msg));
-        socket.send('message', 'Hello World');
+        socket.send('move', { 'direction': 'up' });
       });
       socket.on('acknowledged', (msg) => {
-        console.log(msg);
+        console.log('Ack: ' + msg);
+      });
+      socket.on('rejected', (msg) => {
+        console.log('Ack: ' + msg);
       });
     </script>
   </body>
