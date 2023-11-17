@@ -1,2 +1,6 @@
 Client: https://socket.io/docs/v4/client-installation/
 Server: https://python-socketio.readthedocs.io/en/latest/server.html
+
+# Assemply
+* talk to other user -> send message
+* move around
