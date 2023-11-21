@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -23,6 +24,8 @@ func main() {
 	}
 	matrix.Set(1, 1, 4)
 
+	users := make(map[string]*Position)
+
 	server := socketio.NewServer(&engineio.Options{
 		Transports: []transport.Transport{
 			&polling.Transport{
@@ -40,23 +43,42 @@ func main() {
 		if err != nil {
 			return err
 		}
+
+		position, err := FindPosition(matrix, &users, 5)
+		if err != nil {
+			return err
+		}
+		users[s.ID()] = position
+
+		u, err := json.Marshal(&users)
+		if err != nil {
+			return err
+		}
+
 		s.Emit("init", m)
+		server.BroadcastToNamespace("/", "positions", u)
 		return nil
 	})
 
-	server.OnEvent("/", "notice", func(s socketio.Conn, msg string) {
-		log.Println("notice:", msg)
-		s.Emit("reply", "have "+msg)
-	})
+	server.OnEvent("/", "move", func(s socketio.Conn, msg string) error {
+		direction := Direction(msg)
+		log.Printf("user %v moves: %v", s.ID(), direction)
+		newPosition, err := Move(users[s.ID()], direction, matrix, &users)
+		if err != nil {
+			s.Emit("ack", false)
+			return err
+		}
 
-	server.OnEvent("/chat", "msg", func(s socketio.Conn, msg string) string {
-		return "recv " + msg
-	})
+		users[s.ID()] = newPosition
 
-	server.OnEvent("/", "bye", func(s socketio.Conn) string {
-		s.Emit("bye", "bye")
-		s.Close()
-		return "bye"
+		u, err := json.Marshal(&users)
+		if err != nil {
+			return err
+		}
+
+		s.Emit("ack", true)
+		server.BroadcastToNamespace("/", "positions", u)
+		return nil
 	})
 
 	server.OnError("/", func(s socketio.Conn, e error) {
@@ -65,6 +87,10 @@ func main() {
 
 	server.OnDisconnect("/", func(s socketio.Conn, reason string, context map[string]interface{}) {
 		log.Println("closed", s.ID(), reason)
+		delete(users, s.ID())
+
+		u, _ := json.Marshal(&users)
+		server.BroadcastToNamespace("/", "positions", u)
 	})
 
 	go func() {
