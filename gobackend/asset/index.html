@@ -3,12 +3,27 @@
   <head>
     <title>Webassembly</title>
   </head>
+  <style>
+    .table {
+      width: 30%;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+  </style>
   <body>
     <h1>Webassembly</h1>
-    <button id='up'>UP</button>
-    <button id='down'>DOWN</button>
-    <button id='left'>LEFT</button>
-    <button id='right'>RIGHT</button>
+    <div class='table'>
+      <div>&nbsp;</div>
+      <div><button id='up'>UP</button></div>
+      <div>&nbsp;</div>
+      <div><button id='left'>LEFT</button></div>
+      <div>&nbsp;</div>
+      <div><button id='right'>RIGHT</button></div>
+      <div>&nbsp;</div>
+      <div><button id='down'>DOWN</button></div>
+      <div>&nbsp;</div>
+    </div>
+    
     <pre id='map'></pre>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -18,34 +33,32 @@
       let users = {};
 
       const render = (map, users) => {
-        m = Object.assign([], map);
+        m = JSON.parse(JSON.stringify(map));
         Object.entries(users).forEach(([k, v]) => {
           m[v.y][v.x] = k;
         });
-        console.log('Map' + JSON.stringify(m));
         let s = '';
         m.forEach(row => {
           s += row.join(' ') + '\n';
         });
-        console.log(s);
         $('pre#map').text(s);
       }
 
-      socket.on('positions', function(positions){
-        users = JSON.parse(atob(positions));
+      socket.on('positions', (usersString) => {
+        users = JSON.parse(atob(usersString));
         console.log(users);
 
         render(map, users);
       });
 
-      socket.on('init', function(msg){
-        map = JSON.parse(atob(msg));
+      socket.on('init', (mapString) => {
+        map = JSON.parse(atob(mapString));
         console.log(map);
 
         render(map, users);
       });
 
-      socket.on('ack', function(msg){
+      socket.on('ack', (msg) => {
         console.log(msg);
       });
 
