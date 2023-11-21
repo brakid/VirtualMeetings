@@ -9,17 +9,40 @@
     <button id='down'>DOWN</button>
     <button id='left'>LEFT</button>
     <button id='right'>RIGHT</button>
+    <pre id='map'></pre>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script>
       var socket = io();
+      let map = []
+      let users = {};
+
+      const render = (map, users) => {
+        m = Object.assign([], map);
+        Object.entries(users).forEach(([k, v]) => {
+          m[v.y][v.x] = k;
+        });
+        console.log('Map' + JSON.stringify(m));
+        let s = '';
+        m.forEach(row => {
+          s += row.join(' ') + '\n';
+        });
+        console.log(s);
+        $('pre#map').text(s);
+      }
 
       socket.on('positions', function(positions){
-        console.log(JSON.parse(atob(positions)));
+        users = JSON.parse(atob(positions));
+        console.log(users);
+
+        render(map, users);
       });
 
       socket.on('init', function(msg){
-        console.log(atob(msg));
+        map = JSON.parse(atob(msg));
+        console.log(map);
+
+        render(map, users);
       });
 
       socket.on('ack', function(msg){
