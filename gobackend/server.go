@@ -12,7 +12,6 @@ import (
 	"github.com/vchitai/go-socket.io/v4/engineio/transport/websocket"
 )
 
-// Easier to get running with CORS. Thanks for help @Vindexus and @erkie
 var allowOriginFunc = func(r *http.Request) bool {
 	return true
 }
@@ -39,6 +38,7 @@ func main() {
 
 	server.OnConnect("/", func(s socketio.Conn, context map[string]interface{}) error {
 		log.Println("connected:", s.ID())
+		log.Println("context:", context)
 		m, err := matrix.Marshal()
 		if err != nil {
 			return err

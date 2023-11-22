@@ -15,15 +15,12 @@ func Create(rows uint32, cols uint32) (*Matrix, error) {
 		return nil, fmt.Errorf("invalid matric dimensions")
 	}
 
-	var m Matrix
-	m.Rows = rows
-	m.Cols = cols
-	m.Array = make([][]uint32, rows)
+	m := &Matrix{Rows: rows, Cols: cols, Array: make([][]uint32, rows)}
 	var row uint32
 	for row = 0; row < rows; row += 1 {
 		m.Array[row] = make([]uint32, cols)
 	}
-	return &m, nil
+	return m, nil
 }
 
 func (m *Matrix) Get(row, col uint32) uint32 {
