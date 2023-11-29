@@ -28,9 +28,11 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script>
-      var socket = io({ auth: { token: "abcd" } });
+      let id = Math.floor(Math.random() * 10);
+      let socket = io({ auth: { token: id } });
       let map = []
       let users = {};
+      let nonce = -1;
 
       const render = (map, users) => {
         m = JSON.parse(JSON.stringify(map));
@@ -44,11 +46,11 @@
         $('pre#map').text(s);
       }
 
-      socket.on('positions', (usersString) => {
-        users = JSON.parse(atob(usersString));
-        console.log(users);
-
-        render(map, users);
+      socket.on('update', (updateString) => {
+        update = JSON.parse(atob(updateString));
+        console.log(update);
+        nonce = update.nonce;
+        render(map, update.positions);
       });
 
       socket.on('init', (mapString) => {
@@ -64,7 +66,7 @@
 
       $('button').click((e) => {
         console.log('Move: ' + $(e.target).attr('id'));
-        socket.emit('move', $(e.target).attr('id'));
+        socket.emit('move', JSON.stringify({ direction: $(e.target).attr('id'), nonce: nonce+1 }));
       });
     </script>
   </body>

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -23,7 +24,9 @@ func main() {
 	}
 	matrix.Set(1, 1, 4)
 
+	sockets := make(map[string]string)
 	users := make(map[string]*Position)
+	nonce := uint64(0)
 
 	server := socketio.NewServer(&engineio.Options{
 		Transports: []transport.Transport{
@@ -39,6 +42,8 @@ func main() {
 	server.OnConnect("/", func(s socketio.Conn, context map[string]interface{}) error {
 		log.Println("connected:", s.ID())
 		log.Println("context:", context)
+		id := fmt.Sprintf("%v", context["token"])
+
 		m, err := matrix.Marshal()
 		if err != nil {
 			return err
@@ -48,36 +53,58 @@ func main() {
 		if err != nil {
 			return err
 		}
-		users[s.ID()] = position
+		if _, ok := users[id]; ok {
+			return fmt.Errorf("user id is already taken: %v", id)
+		}
+		sockets[s.ID()] = id
+		users[id] = position
+		nonce += 1
+		update := Update{Positions: &users, Nonce: nonce}
 
-		u, err := json.Marshal(&users)
+		u, err := json.Marshal(update)
 		if err != nil {
 			return err
 		}
 
 		s.Emit("init", m)
-		server.BroadcastToNamespace("/", "positions", u)
+		server.BroadcastToNamespace("/", "update", u)
 		return nil
 	})
 
 	server.OnEvent("/", "move", func(s socketio.Conn, msg string) error {
-		direction := Direction(msg)
-		log.Printf("user %v moves: %v", s.ID(), direction)
-		newPosition, err := Move(users[s.ID()], direction, matrix, &users)
+		var userUpdate UserUpdate
+		err := json.Unmarshal([]byte(msg), &userUpdate)
+		if err != nil {
+			s.Emit("ack", false)
+			return err
+		}
+		if userUpdate.Nonce <= nonce {
+			s.Emit("ack", false)
+			return fmt.Errorf("invalid nonce: %v vs %v", nonce, userUpdate.Nonce)
+		}
+		nonce = userUpdate.Nonce
+		id, ok := sockets[s.ID()]
+		if !ok {
+			s.Emit("ack", false)
+			return fmt.Errorf("invalid socket ID: %v", s.ID())
+		}
+		log.Printf("user %v moves: %v", id, userUpdate.Direction)
+		newPosition, err := Move(users[id], userUpdate.Direction, matrix, &users)
 		if err != nil {
 			s.Emit("ack", false)
 			return err
 		}
 
-		users[s.ID()] = newPosition
+		users[id] = newPosition
+		update := Update{Positions: &users, Nonce: nonce}
 
-		u, err := json.Marshal(&users)
+		u, err := json.Marshal(update)
 		if err != nil {
 			return err
 		}
 
 		s.Emit("ack", true)
-		server.BroadcastToNamespace("/", "positions", u)
+		server.BroadcastToNamespace("/", "update", u)
 		return nil
 	})
 
@@ -87,10 +114,15 @@ func main() {
 
 	server.OnDisconnect("/", func(s socketio.Conn, reason string, context map[string]interface{}) {
 		log.Println("closed", s.ID(), reason)
-		delete(users, s.ID())
+		id := sockets[s.ID()]
+		delete(users, id)
+		delete(sockets, s.ID())
+		nonce += 1
 
-		u, _ := json.Marshal(&users)
-		server.BroadcastToNamespace("/", "positions", u)
+		update := Update{Positions: &users, Nonce: nonce}
+
+		u, _ := json.Marshal(update)
+		server.BroadcastToNamespace("/", "update", u)
 	})
 
 	go func() {
