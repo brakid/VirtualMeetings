@@ -1,46 +1,55 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 )
 
-type Matrix struct {
-	Rows, Cols uint32
-	Array      [][]uint32
+type Tile struct {
+	Id          string `json:"id"`
+	CanEnter    bool   `json:"canEnter"`
+	CanInteract bool   `json:"canInteract"`
 }
 
-func Create(rows uint32, cols uint32) (*Matrix, error) {
+var EMPTY_TILE = &Tile{Id: "0", CanEnter: true, CanInteract: false}
+
+type TileMap struct {
+	Tileset string    `json:"tileset"`
+	Rows    uint32    `json:"rows"`
+	Cols    uint32    `json:"cols"`
+	Array   [][]*Tile `json:"array"`
+}
+
+func Create(tileset string, rows uint32, cols uint32) (*TileMap, error) {
 	if rows == 0 || cols == 0 {
 		return nil, fmt.Errorf("invalid matric dimensions")
 	}
 
-	m := &Matrix{Rows: rows, Cols: cols, Array: make([][]uint32, rows)}
+	t := &TileMap{Tileset: tileset, Rows: rows, Cols: cols, Array: make([][]*Tile, rows)}
 	var row uint32
 	for row = 0; row < rows; row += 1 {
-		m.Array[row] = make([]uint32, cols)
+		t.Array[row] = make([]*Tile, cols)
+		var col uint32
+		for col = 0; col < cols; col += 1 {
+			t.Array[row][col] = EMPTY_TILE
+		}
 	}
-	return m, nil
+	return t, nil
 }
 
-func (m *Matrix) Get(row, col uint32) uint32 {
-	return m.Array[row][col]
+func (t *TileMap) Get(row, col uint32) *Tile {
+	return t.Array[row][col]
 }
 
-func (m *Matrix) GetPosition(p *Position) uint32 {
-	return m.Get(p.Y, p.X)
+func (t *TileMap) GetPosition(p *Position) *Tile {
+	return t.Get(p.Y, p.X)
 }
 
-func (m *Matrix) Set(row, col, value uint32) {
-	m.Array[row][col] = value
+func (t *TileMap) Set(row, col uint32, value *Tile) {
+	t.Array[row][col] = value
 }
 
-func (m *Matrix) SetPosition(p *Position, value uint32) {
-	m.Set(p.Y, p.X, value)
-}
-
-func (m *Matrix) Marshal() ([]byte, error) {
-	return json.Marshal(m.Array)
+func (t *TileMap) SetPosition(p *Position, value *Tile) {
+	t.Set(p.Y, p.X, value)
 }
 
 type Direction string

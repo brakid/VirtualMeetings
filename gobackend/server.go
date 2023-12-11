@@ -13,16 +13,12 @@ import (
 	"github.com/vchitai/go-socket.io/v4/engineio/transport/websocket"
 )
 
-var allowOriginFunc = func(r *http.Request) bool {
-	return true
-}
-
 func main() {
-	matrix, err := Create(5, 5)
+	tileMap, err := Create("default.png", 5, 5)
 	if err != nil {
-		log.Fatalf("Failed to instantiate the matrix: %v", err)
+		log.Fatalf("Failed to instantiate the tile map: %v", err)
 	}
-	matrix.Set(1, 1, 4)
+	tileMap.Set(1, 1, &Tile{Id: "1", CanEnter: false, CanInteract: false})
 
 	sockets := make(map[string]string)
 	users := make(map[string]*Position)
@@ -31,10 +27,14 @@ func main() {
 	server := socketio.NewServer(&engineio.Options{
 		Transports: []transport.Transport{
 			&polling.Transport{
-				CheckOrigin: allowOriginFunc,
+				CheckOrigin: func(r *http.Request) bool {
+					return true
+				},
 			},
 			&websocket.Transport{
-				CheckOrigin: allowOriginFunc,
+				CheckOrigin: func(r *http.Request) bool {
+					return true
+				},
 			},
 		},
 	})
@@ -44,12 +44,12 @@ func main() {
 		log.Println("context:", context)
 		id := fmt.Sprintf("%v", context["token"])
 
-		m, err := matrix.Marshal()
+		t, err := json.Marshal(tileMap)
 		if err != nil {
 			return err
 		}
 
-		position, err := FindPosition(matrix, &users, 5)
+		position, err := FindPosition(tileMap, &users, 5)
 		if err != nil {
 			return err
 		}
@@ -66,7 +66,7 @@ func main() {
 			return err
 		}
 
-		s.Emit("init", m)
+		s.Emit("init", t)
 		server.BroadcastToNamespace("/", "update", u)
 		return nil
 	})
@@ -76,22 +76,26 @@ func main() {
 		err := json.Unmarshal([]byte(msg), &userUpdate)
 		if err != nil {
 			s.Emit("ack", false)
+			log.Printf("Unmarshal Error: %v", err)
 			return err
 		}
 		if userUpdate.Nonce <= nonce {
 			s.Emit("ack", false)
+			log.Printf("Error: invalid nonce: %v vs %v", nonce, userUpdate.Nonce)
 			return fmt.Errorf("invalid nonce: %v vs %v", nonce, userUpdate.Nonce)
 		}
 		nonce = userUpdate.Nonce
 		id, ok := sockets[s.ID()]
 		if !ok {
 			s.Emit("ack", false)
+			log.Printf("Error: invalid socket ID: %v", s.ID())
 			return fmt.Errorf("invalid socket ID: %v", s.ID())
 		}
 		log.Printf("user %v moves: %v", id, userUpdate.Direction)
-		newPosition, err := Move(users[id], userUpdate.Direction, matrix, &users)
+		newPosition, err := Move(users[id], userUpdate.Direction, tileMap, &users)
 		if err != nil {
 			s.Emit("ack", false)
+			log.Printf("Move Error: %v", err)
 			return err
 		}
 
@@ -100,6 +104,7 @@ func main() {
 
 		u, err := json.Marshal(update)
 		if err != nil {
+			log.Printf("Marshal Error: %v", err)
 			return err
 		}
 

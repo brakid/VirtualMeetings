@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func FindPosition(m *Matrix, u *map[string]*Position, attempts int) (*Position, error) {
+func FindPosition(t *TileMap, u *map[string]*Position, attempts int) (*Position, error) {
 	attempt := 1
 	found := false
 	var position *Position
@@ -15,12 +15,12 @@ func FindPosition(m *Matrix, u *map[string]*Position, attempts int) (*Position, 
 	for (attempt < attempts) && !found {
 		attempt += 1
 
-		x := rand.Uint32() % m.Cols
-		y := rand.Uint32() % m.Rows
+		x := rand.Uint32() % t.Cols
+		y := rand.Uint32() % t.Rows
 
 		position = &Position{X: x, Y: y}
 
-		if m.GetPosition(position) != 0 {
+		if !t.GetPosition(position).CanEnter {
 			continue
 		}
 		for _, pos := range *u {
@@ -52,18 +52,18 @@ func move(p *Position, d Direction) *Position {
 	return nil
 }
 
-func Move(p *Position, d Direction, m *Matrix, u *map[string]*Position) (*Position, error) {
+func Move(p *Position, d Direction, t *TileMap, u *map[string]*Position) (*Position, error) {
 	newPosition := move(p, d)
 
-	if int32(newPosition.X) < 0 || newPosition.X >= m.Cols {
+	if int32(newPosition.X) < 0 || newPosition.X >= t.Cols {
 		return nil, fmt.Errorf("invalid column/x")
 	}
 
-	if int32(newPosition.Y) < 0 || newPosition.Y >= m.Rows {
+	if int32(newPosition.Y) < 0 || newPosition.Y >= t.Rows {
 		return nil, fmt.Errorf("invalid row/y")
 	}
 
-	if m.GetPosition(newPosition) != 0 {
+	if !t.GetPosition(newPosition).CanEnter {
 		return nil, fmt.Errorf("invalid position, blocked")
 	}
 
