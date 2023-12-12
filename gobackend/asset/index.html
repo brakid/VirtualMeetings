@@ -34,11 +34,24 @@
       let tileMap = {};
       let users = {};
       let nonce = -1;
-      let tilesetImage = new Image();
+      let tilesetImage = undefined;
       const tileSize = 32;
       const imageNumTiles = 16;
 
+      const loadImage = (src) => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            tilesetImage = img;
+            resolve();
+          };
+          img.onerror = reject;
+          img.src = src;
+        });
+      };
+
       const render = (tileMap, users) => {
+        /*
         m = JSON.parse(JSON.stringify(tileMap.array)).map(row => row.map(col => col.id));
         Object.entries(users).forEach(([k, v]) => {
           m[v.y][v.x] = k;
@@ -48,36 +61,42 @@
           s += row.join(' ') + '\n';
         });
         $('pre#map').text(s);
+        */
 
-        let canvas = $('#main');
-        let ctx = $(canvas)[0].getContext('2d');
-        m.forEach((row, rowIndex) => {
+        let ctx = $('#main')[0].getContext('2d');
+
+        if (!tilesetImage) {
+          setTimeout(() => render(tileMap, users), 500);
+          return;
+        }
+
+        ctx.clearRect(0, 0, tileSize * tileMap.cols, tileSize * tileMap.rows);
+        tileMap.array.forEach((row, rowIndex) => {
           row.forEach((col, colIndex) => {
             let tileRow = 1;
             let tileCol = 13;
-            if (col == 1) {
+            if (col.id == '1') {
               tileRow = 1;
               tileCol = 12;
-            }
-            if (col > 1) {
-              tileRow = 10;
-              tileCol = 7;
             }
             ctx.drawImage(tilesetImage, (tileCol * tileSize), (tileRow * tileSize), tileSize, tileSize, (colIndex * tileSize), (rowIndex * tileSize), tileSize, tileSize); 
           })
         }); 
-      }
+
+        Object.entries(users).forEach(([k, v]) => {
+          tileRow = 10;
+          tileCol = 7;
+          console.log('Here');
+          ctx.drawImage(tilesetImage, (tileCol * tileSize), (tileRow * tileSize), tileSize, tileSize, (v.x * tileSize), (v.y * tileSize), tileSize, tileSize); 
+        });
+      };
 
       socket.on('update', async (updateString) => {
         update = JSON.parse(atob(updateString));
         console.log(update);
         nonce = update.nonce;
         console.log('Update');
-        if (!tilesetImage.complete) {
-          await (() => new Promise(resolve => {
-            setTimeout(resolve, 1000);
-          }))();
-        }
+        
         render(tileMap, update.positions);
       });
 
@@ -85,16 +104,7 @@
         tileMap = JSON.parse(atob(mapString));
         console.log(tileMap);
 
-        const loadImage = (src) => {
-          return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = src;
-          });
-        };
-
-        tilesetImage = await loadImage('http://localhost:8000/' + tileMap.tileset);
+        await loadImage('http://localhost:8000/' + tileMap.tileset);
         let canvas = $('#main');
         canvas.width = tileSize * tileMap.cols;
         canvas.height =  tileSize * tileMap.rows;
