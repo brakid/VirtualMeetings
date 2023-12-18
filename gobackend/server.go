@@ -18,7 +18,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to instantiate the tile map: %v", err)
 	}
-	tileMap.Set(1, 1, &Tile{Id: "1", CanEnter: false, CanInteract: false})
+	tileMap.Set(1, 1, &Tile{Layer1Id: "28", Layer2Id: "151", CanEnter: false, CanInteract: false})
 
 	sockets := make(map[string]string)
 	users := make(map[string]*Position)

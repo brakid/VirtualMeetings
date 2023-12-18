@@ -50,6 +50,14 @@
         });
       };
 
+      const tileIdToTile = (tileId) => {
+        const id = parseInt(tileId);
+        const row = Math.floor(id / 16);
+        const col = id % 16;
+
+        return [row, col];
+      }
+
       const render = (tileMap, users) => {
         /*
         m = JSON.parse(JSON.stringify(tileMap.array)).map(row => row.map(col => col.id));
@@ -73,15 +81,17 @@
         ctx.clearRect(0, 0, tileSize * tileMap.cols, tileSize * tileMap.rows);
         tileMap.array.forEach((row, rowIndex) => {
           row.forEach((col, colIndex) => {
-            let tileRow = 1;
-            let tileCol = 13;
-            if (col.id == '1') {
-              tileRow = 1;
-              tileCol = 12;
-            }
+            const [tileRow, tileCol] = tileIdToTile(col.layer1Id);
             ctx.drawImage(tilesetImage, (tileCol * tileSize), (tileRow * tileSize), tileSize, tileSize, (colIndex * tileSize), (rowIndex * tileSize), tileSize, tileSize); 
           })
-        }); 
+        });
+
+        tileMap.array.forEach((row, rowIndex) => {
+          row.forEach((col, colIndex) => {
+            const [tileRow, tileCol] = tileIdToTile(col.layer2Id);
+            ctx.drawImage(tilesetImage, (tileCol * tileSize), (tileRow * tileSize), tileSize, tileSize, (colIndex * tileSize), (rowIndex * tileSize), tileSize, tileSize); 
+          })
+        });
 
         Object.entries(users).forEach(([k, v]) => {
           tileRow = 10;

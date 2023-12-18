@@ -5,12 +5,13 @@ import (
 )
 
 type Tile struct {
-	Id          string `json:"id"`
+	Layer1Id    string `json:"layer1Id"`
+	Layer2Id    string `json:"layer2Id"`
 	CanEnter    bool   `json:"canEnter"`
 	CanInteract bool   `json:"canInteract"`
 }
 
-var EMPTY_TILE = &Tile{Id: "0", CanEnter: true, CanInteract: false}
+var EMPTY_TILE = &Tile{Layer1Id: "28", Layer2Id: "0", CanEnter: true, CanInteract: false}
 
 type TileMap struct {
 	Tileset string    `json:"tileset"`
