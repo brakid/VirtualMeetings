@@ -29,6 +29,18 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script>
+      const userColorMap = {
+        0: 'red',
+        1: 'green',
+        2: 'blue',
+        3: 'yellow',
+        4: 'white',
+        5: 'gray',
+        6: 'brown',
+        7: 'orange',
+        8: 'maroon',
+        9: 'violet',
+      }
       let id = Math.floor(Math.random() * 10);
       let socket = io({ auth: { token: id } });
       let tileMap = {};
@@ -94,10 +106,25 @@
         });
 
         Object.entries(users).forEach(([k, v]) => {
-          tileRow = 10;
-          tileCol = 7;
+          const { x, y } = v.position;
+          const direction = v.direction;
+          ctx.fillStyle = userColorMap[parseInt(k)];
+          ctx.beginPath();
+          if (direction == 'up') {
+            ctx.arc(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2, tileSize / 2, 1.75 * Math.PI, 1.25 * Math.PI);
+          } else if (direction == 'down') {
+            ctx.arc(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2, tileSize / 2, 0.75 * Math.PI, 0.25 * Math.PI);
+          } else if (direction == 'left') {
+            ctx.arc(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2, tileSize / 2, 1.25 * Math.PI, 0.75 * Math.PI);
+          } else if (direction == 'right') {  
+            ctx.arc(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2, tileSize / 2, 0.25 * Math.PI, 1.75 * Math.PI);
+          }
+
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          
           console.log('Here');
-          ctx.drawImage(tilesetImage, (tileCol * tileSize), (tileRow * tileSize), tileSize, tileSize, (v.x * tileSize), (v.y * tileSize), tileSize, tileSize); 
         });
       };
 

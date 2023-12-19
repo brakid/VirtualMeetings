@@ -67,9 +67,14 @@ type Position struct {
 	Y uint32 `json:"y"`
 }
 
+type UserPosition struct {
+	Position  *Position `json:"position"`
+	Direction Direction `json:"direction"`
+}
+
 type Update struct {
-	Positions *map[string]*Position `json:"positions"`
-	Nonce     uint64                `json:"nonce"`
+	Positions *map[string]*UserPosition `json:"positions"`
+	Nonce     uint64                    `json:"nonce"`
 }
 
 type UserUpdate struct {

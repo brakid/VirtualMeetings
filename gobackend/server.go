@@ -21,7 +21,7 @@ func main() {
 	tileMap.Set(1, 1, &Tile{Layer1Id: "28", Layer2Id: "151", CanEnter: false, CanInteract: false})
 
 	sockets := make(map[string]string)
-	users := make(map[string]*Position)
+	users := make(map[string]*UserPosition)
 	nonce := uint64(0)
 
 	server := socketio.NewServer(&engineio.Options{
@@ -92,7 +92,7 @@ func main() {
 			return fmt.Errorf("invalid socket ID: %v", s.ID())
 		}
 		log.Printf("user %v moves: %v", id, userUpdate.Direction)
-		newPosition, err := Move(users[id], userUpdate.Direction, tileMap, &users)
+		newPosition, err := Move(id, userUpdate.Direction, tileMap, &users)
 		if err != nil {
 			s.Emit("ack", false)
 			log.Printf("Move Error: %v", err)
