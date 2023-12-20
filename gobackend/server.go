@@ -18,7 +18,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to instantiate the tile map: %v", err)
 	}
-	tileMap.Set(1, 1, &Tile{Layer1Id: "28", Layer2Id: "151", CanEnter: false, CanInteract: false})
+	tileMap.Set(1, 1, &Tile{Layer1Id: "28", Layer2Id: "151", CanEnter: false, CanInteract: true})
 
 	sockets := make(map[string]string)
 	users := make(map[string]*UserPosition)
@@ -84,7 +84,6 @@ func main() {
 			log.Printf("Error: invalid nonce: %v vs %v", nonce, userUpdate.Nonce)
 			return fmt.Errorf("invalid nonce: %v vs %v", nonce, userUpdate.Nonce)
 		}
-		nonce = userUpdate.Nonce
 		id, ok := sockets[s.ID()]
 		if !ok {
 			s.Emit("ack", false)
@@ -99,6 +98,7 @@ func main() {
 			return err
 		}
 
+		nonce = userUpdate.Nonce
 		users[id] = newPosition
 		update := Update{Positions: &users, Nonce: nonce}
 
@@ -110,6 +110,71 @@ func main() {
 
 		s.Emit("ack", true)
 		server.BroadcastToNamespace("/", "update", u)
+		return nil
+	})
+
+	server.OnEvent("/", "interact", func(s socketio.Conn, msg string) error {
+		var userInteraction UserInteraction
+		err := json.Unmarshal([]byte(msg), &userInteraction)
+		if err != nil {
+			s.Emit("ack", false)
+			log.Printf("Unmarshal Error: %v", err)
+			return err
+		}
+		if userInteraction.Nonce <= nonce {
+			s.Emit("ack", false)
+			log.Printf("Error: invalid nonce: %v vs %v", nonce, userInteraction.Nonce)
+			return fmt.Errorf("invalid nonce: %v vs %v", nonce, userInteraction.Nonce)
+		}
+
+		id, ok := sockets[s.ID()]
+		if !ok {
+			s.Emit("ack", false)
+			log.Printf("Error: invalid socket ID: %v", s.ID())
+			return fmt.Errorf("invalid socket ID: %v", s.ID())
+		}
+
+		positionFacing, err := PositionFacing(users[id], tileMap)
+		if err != nil {
+			s.Emit("ack", false)
+			log.Printf("Error: invalid position facing: %v", positionFacing)
+			return fmt.Errorf("invalid position facing: %v", positionFacing)
+		}
+
+		log.Printf("user %v interacts with position: %v", id, positionFacing)
+
+		tile := tileMap.GetPosition(positionFacing)
+		if tile == nil {
+			s.Emit("ack", false)
+			log.Printf("Error: invalid tile")
+			return fmt.Errorf("invalid tile")
+		}
+
+		if !tile.CanInteract {
+			s.Emit("ack", false)
+			log.Printf("Error: not interactive")
+			return fmt.Errorf("not interactive")
+		}
+		nonce = userInteraction.Nonce
+		interaction := &Interaction{Message: "Turning on the TV", Nonce: nonce}
+
+		i, err := json.Marshal(interaction)
+		if err != nil {
+			log.Printf("Marshal Error: %v", err)
+			return err
+		}
+
+		otherUserInteraction := &OtherUserInteraction{UserId: id, Nonce: nonce}
+		ui, err := json.Marshal(otherUserInteraction)
+		if err != nil {
+			log.Printf("Marshal Error: %v", err)
+			return err
+		}
+
+		s.Emit("interaction", i)
+		s.Emit("ack", true)
+		server.BroadcastToNamespace("/", "userInteraction", ui)
+
 		return nil
 	})
 

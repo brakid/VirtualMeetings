@@ -38,6 +38,9 @@ func Create(tileset string, rows uint32, cols uint32) (*TileMap, error) {
 }
 
 func (t *TileMap) Get(row, col uint32) *Tile {
+	if row >= t.Rows || col >= t.Cols {
+		return nil
+	}
 	return t.Array[row][col]
 }
 
@@ -46,6 +49,9 @@ func (t *TileMap) GetPosition(p *Position) *Tile {
 }
 
 func (t *TileMap) Set(row, col uint32, value *Tile) {
+	if row >= t.Rows || col >= t.Cols {
+		return
+	}
 	t.Array[row][col] = value
 }
 
@@ -80,4 +86,18 @@ type Update struct {
 type UserUpdate struct {
 	Direction Direction `json:"direction"`
 	Nonce     uint64    `json:"nonce"`
+}
+
+type UserInteraction struct {
+	Nonce uint64 `json:"nonce"`
+}
+
+type Interaction struct {
+	Message string `json:"message"`
+	Nonce   uint64 `json:"nonce"`
+}
+
+type OtherUserInteraction struct {
+	UserId string `json:"userId"`
+	Nonce  uint64 `json:"nonce"`
 }

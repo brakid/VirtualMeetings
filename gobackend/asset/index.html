@@ -14,13 +14,13 @@
     <h1>Webassembly</h1>
     <div class='table'>
       <div>&nbsp;</div>
-      <div><button id='up'>UP</button></div>
+      <div><button class='move' id='up'>UP</button></div>
       <div>&nbsp;</div>
-      <div><button id='left'>LEFT</button></div>
+      <div><button class='move' id='left'>LEFT</button></div>
+      <div><button class='interact' id='interact'>INTERACT</button></div>
+      <div><button class='move' id='right'>RIGHT</button></div>
       <div>&nbsp;</div>
-      <div><button id='right'>RIGHT</button></div>
-      <div>&nbsp;</div>
-      <div><button id='down'>DOWN</button></div>
+      <div><button class='move' id='down'>DOWN</button></div>
       <div>&nbsp;</div>
     </div>
     
@@ -41,7 +41,7 @@
         8: 'maroon',
         9: 'violet',
       }
-      let id = Math.floor(Math.random() * 10);
+      let id = Math.floor(Math.random() * 10) + '';
       let socket = io({ auth: { token: id } });
       let tileMap = {};
       let users = {};
@@ -131,10 +131,11 @@
       socket.on('update', async (updateString) => {
         update = JSON.parse(atob(updateString));
         console.log(update);
+        users = update.positions;
         nonce = update.nonce;
         console.log('Update');
         
-        render(tileMap, update.positions);
+        render(tileMap, users);
       });
 
       socket.on('init', async (mapString) => {
@@ -149,16 +150,41 @@
         render(tileMap, users);
       });
 
-      socket.on('ack', (ack) => {
+      socket.on('ack', async (ack) => {
         console.log('ack? ' + ack);
         if (!ack) {
           nonce += 1;
         }
       });
 
-      $('button').click((e) => {
+      socket.on('interaction', async (interactionString) => {
+        interaction = JSON.parse(atob(interactionString));
+        console.log('Interaction: ' + JSON.stringify(interaction));
+        nonce = interaction.nonce;
+
+        render(tileMap, users);
+      });
+
+      socket.on('userInteraction', async (userInteractionString) => {
+        userInteraction = JSON.parse(atob(userInteractionString));
+        if (userInteraction.userId === id) {
+          console.log('Ignoring own interaction');
+        } else {
+          console.log('Other user interaction: ' + JSON.stringify(userInteraction));
+          nonce = userInteraction.nonce;
+          
+          render(tileMap, users);
+        }
+      });
+
+      $('button.move').click((e) => {
         console.log('Move: ' + $(e.target).attr('id'));
         socket.emit('move', JSON.stringify({ direction: $(e.target).attr('id'), nonce: nonce+1 }));
+      });
+
+      $('button.interact').click((e) => {
+        console.log('Interact');
+        socket.emit('interact', JSON.stringify({ nonce: nonce+1 }));
       });
     </script>
   </body>

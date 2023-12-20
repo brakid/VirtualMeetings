@@ -59,12 +59,8 @@ func Move(id string, d Direction, t *TileMap, users *map[string]*UserPosition) (
 	u := (*users)[id]
 	newPosition := move(u, d)
 
-	if int32(newPosition.Position.X) < 0 || newPosition.Position.X >= t.Cols {
-		return nil, fmt.Errorf("invalid column/x")
-	}
-
-	if int32(newPosition.Position.Y) < 0 || newPosition.Position.Y >= t.Rows {
-		return nil, fmt.Errorf("invalid row/y")
+	if valid, err := isValid(newPosition.Position, t); !valid {
+		return nil, err
 	}
 
 	if !t.GetPosition(newPosition.Position).CanEnter {
@@ -79,4 +75,26 @@ func Move(id string, d Direction, t *TileMap, users *map[string]*UserPosition) (
 	}
 
 	return newPosition, nil
+}
+
+func isValid(p *Position, t *TileMap) (bool, error) {
+	if int32(p.X) < 0 || p.X >= t.Cols {
+		return false, fmt.Errorf("invalid column/x")
+	}
+
+	if int32(p.Y) < 0 || p.Y >= t.Rows {
+		return false, fmt.Errorf("invalid row/y")
+	}
+
+	return true, nil
+}
+
+func PositionFacing(u *UserPosition, t *TileMap) (*Position, error) {
+	positionFacing := move(u, u.Direction).Position
+
+	if valid, err := isValid(positionFacing, t); !valid {
+		return positionFacing, err
+	}
+
+	return positionFacing, nil
 }
