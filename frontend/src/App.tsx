@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { context, interact, move } from './socket';
+import { context, interact, move, nonce } from './socket';
 
 const App = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -21,7 +21,8 @@ const App = () => {
         <div>&nbsp;</div>
         <div><button className='move' onClick={ () => move('down') }>DOWN</button></div>
         <div>&nbsp;</div>
-    </div>
+      </div>
+      <pre>Nonce: { nonce }</pre>
     </>
   );
 };

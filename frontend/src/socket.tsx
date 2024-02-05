@@ -66,12 +66,13 @@ const userColorMap = new Map<number, string>([
   [9, 'violet'],
 ]);
 const id = Math.floor(Math.random() * 10) + '';
+
 const backendUrl = 'http://localhost:8000';
 export const context = signal<CanvasRenderingContext2D | undefined>(undefined);
 
 const tileMap = signal<TileMap | undefined>(undefined);
 const users = signal<Users>(new Map());
-const nonce = signal(-1);
+export const nonce = signal(-1);
 const tilesetImage = signal<HTMLImageElement | undefined>(undefined);
 const tileSize = 32;
 
