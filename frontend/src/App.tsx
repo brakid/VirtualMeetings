@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { context, nonce, enrichedSocket } from './socket';
+import { enrichedSocket } from './socket';
 
 const App = () => {
   const [ interaction, setInteraction ] = useState<string>();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
-    if (canvasRef.current !== null && context.value === undefined) {
-      context.value = canvasRef.current.getContext('2d')!;
+    if (canvasRef.current !== null && enrichedSocket.value.context === undefined) {
+      enrichedSocket.value.context = canvasRef.current.getContext('2d')!;
 
       enrichedSocket.value.addCallback((interaction) => setInteraction(interaction.message));
     }
@@ -27,7 +27,7 @@ const App = () => {
         <div><button className='move' onClick={ () => enrichedSocket.value.move('down') }>DOWN</button></div>
         <div>&nbsp;</div>
       </div>
-      <pre>Nonce: { nonce }</pre>
+      <pre>Nonce: { enrichedSocket.value.getNonce() }</pre>
       <pre>Interaction: { interaction }</pre>
     </>
   );
