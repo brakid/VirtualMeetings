@@ -1,5 +1,5 @@
 import { signal } from "@preact/signals-react";
-import { io } from "socket.io-client";
+import { Socket, io } from "socket.io-client";
 
 type Tile = {
   layer1Id: string;
@@ -53,6 +53,32 @@ type OtherUserInteraction = {
 	nonce: number;
 };
 
+type InteractionCallback = (interaction: Interaction) => void;
+
+class EnrichedSocket {
+  private socket: Socket;
+  private interactionCallbacks: InteractionCallback[];
+
+  constructor(socket: Socket) {
+    this.socket = socket;
+    this.interactionCallbacks = [];
+  }
+
+  addCallback(callback: InteractionCallback) {
+    this.interactionCallbacks.push(callback);
+  }
+
+  move(direction: Direction) {
+    console.log('Move: ' + direction);
+    this.socket.emit('move', JSON.stringify({ direction, nonce: nonce.value + 1 } as UserUpdate));
+  }
+  
+  interact() {
+    console.log('Interact');
+    this.socket.emit('interact', JSON.stringify({ nonce: nonce.value + 1 } as UserInteraction));
+  }
+}
+
 const userColorMap = new Map<number, string>([
   [0, 'red'],
   [1, 'green'],
@@ -76,9 +102,12 @@ export const nonce = signal(-1);
 const tilesetImage = signal<HTMLImageElement | undefined>(undefined);
 const tileSize = 32;
 
-const socket = signal((() => {
-  const s = io(backendUrl, { auth: { token: id } });
-  s.on('update', async (updateString) => {
+const createEnrichedSocket = (backendUrl: string, id: string): EnrichedSocket => {
+  const socket = io(backendUrl, { auth: { token: id } });
+
+  const enrichedSocket = new EnrichedSocket(socket);
+
+  socket.on('update', async (updateString) => {
     const update = JSON.parse(atob(updateString)) as Update;
     console.log(update);
     users.value = update.positions;
@@ -88,7 +117,7 @@ const socket = signal((() => {
     render(tilesetImage.value, tileMap.value, users.value, context.value);
   });
   
-  s.on('init', async (mapString) => {
+  socket.on('init', async (mapString) => {
     tileMap.value = JSON.parse(atob(mapString)) as TileMap;
     console.log(tileMap);
   
@@ -99,27 +128,30 @@ const socket = signal((() => {
     render(tilesetImage.value, tileMap.value, users.value, context.value);
   });
 
-  s.on('disconnect', async () => {
+  socket.on('disconnect', async () => {
     users.value = new Map();
     render(tilesetImage.value, tileMap.value, users.value, context.value);
   })
   
-  s.on('ack', async (ack) => {
+  socket.on('ack', async (ack) => {
     console.log('ack? ' + ack);
     if (!ack) {
       nonce.value += 1;
     }
   });
   
-  s.on('interaction', async (interactionString) => {
+  socket.on('interaction', async (interactionString) => {
     const interaction = JSON.parse(atob(interactionString)) as Interaction;
     console.log('Interaction: ' + JSON.stringify(interaction));
+
+    enrichedSocket.interactionCallbacks.forEach(callback => callback(interaction));
+
     nonce.value = interaction.nonce;
   
     render(tilesetImage.value, tileMap.value, users.value, context.value);
   });
   
-  s.on('userInteraction', async (userInteractionString) => {
+  socket.on('userInteraction', async (userInteractionString) => {
     const userInteraction = JSON.parse(atob(userInteractionString)) as OtherUserInteraction;
     if (userInteraction.userId === id) {
       console.log('Ignoring own interaction');
@@ -131,8 +163,10 @@ const socket = signal((() => {
     }
   });
 
-  return s;
-})());
+  return enrichedSocket;
+};
+
+export const enrichedSocket = signal<EnrichedSocket>(createEnrichedSocket(backendUrl, id));
 
 const loadImage = (src: string) => {
   return new Promise<void>((resolve, reject) => {
@@ -194,14 +228,4 @@ const render = (tilesetImage: HTMLImageElement | undefined, tileMap: TileMap | u
     context.fill();
     context.stroke();
   });
-};
-
-export const move = (direction: Direction) => {
-  console.log('Move: ' + direction);
-  socket.value.emit('move', JSON.stringify({ direction, nonce: nonce.value + 1 } as UserUpdate));
-};
-
-export const interact = () => {
-  console.log('Interact');
-  socket.value.emit('interact', JSON.stringify({ nonce: nonce.value + 1 } as UserInteraction));
 };
