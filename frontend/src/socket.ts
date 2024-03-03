@@ -3,14 +3,14 @@ import { Socket, io } from 'socket.io-client';
 import { InteractionCallback, TileMap, Users, Update, Interaction, OtherUserInteraction, Direction, UserUpdate, UserInteraction } from './types';
 import { TILE_SIZE, render } from './render';
 
-const id = Math.floor(Math.random() * 10) + '';
+export const id = signal(Math.floor(Math.random() * 10) + '');
 
 const BACKEND_URL = 'http://localhost:8000';
 
 class EnrichedSocket {
   private socket: Socket;
   private interactionCallbacks: InteractionCallback[];
-  context?: CanvasRenderingContext2D;
+  private context?: CanvasRenderingContext2D;
   private tileMap?: TileMap;
   private users: Users;
   private nonce: Signal<number>;
@@ -30,7 +30,7 @@ class EnrichedSocket {
       this.nonce.value = update.nonce;
       console.log('Update');
       
-      render(this.tilesetImage, this.tileMap, this.users, this.context);
+      this.render();
     });
     
     this.socket.on('init', async (mapString) => {
@@ -41,12 +41,12 @@ class EnrichedSocket {
       this.context!.canvas.width = TILE_SIZE * this.tileMap!.cols;
       this.context!.canvas.height = TILE_SIZE * this.tileMap!.rows;
     
-      render(this.tilesetImage, this.tileMap, this.users, this.context);
+      this.render();
     });
 
     this.socket.on('disconnect', async () => {
       this.users = new Map();
-      render(this.tilesetImage, this.tileMap, this.users, this.context);
+      this.render();
     })
     
     this.socket.on('ack', async (ack) => {
@@ -64,7 +64,7 @@ class EnrichedSocket {
 
       this.nonce.value = interaction.nonce;
     
-      render(this.tilesetImage, this.tileMap, this.users, this.context);
+      this.render();
     });
     
     this.socket.on('userInteraction', async (userInteractionString) => {
@@ -75,9 +75,25 @@ class EnrichedSocket {
         console.log('Other user interaction: ' + JSON.stringify(userInteraction));
         this.nonce.value = userInteraction.nonce;
         
-        render(this.tilesetImage, this.tileMap, this.users, this.context);
+        this.render();
       }
     });
+  }
+
+  setContext(context: CanvasRenderingContext2D) {
+    this.context = context;
+  }
+
+  getContext(): CanvasRenderingContext2D | undefined {
+    return this.context;
+  }
+
+  render() {
+    if (!this.tilesetImage || !this.tileMap || !this.context) {
+      setTimeout(() => this.render(), 500);
+      return;
+    }
+    render(this.tilesetImage, this.tileMap, this.users, this.context)
   }
 
   private loadImage(src: string) {
@@ -111,5 +127,4 @@ class EnrichedSocket {
   }
 }
 
-export const enrichedSocket = signal<EnrichedSocket>(new EnrichedSocket(BACKEND_URL, id));
-
+export const enrichedSocket = signal<EnrichedSocket>(new EnrichedSocket(BACKEND_URL, id.peek()));

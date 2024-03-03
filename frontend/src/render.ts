@@ -23,12 +23,7 @@ const tileIdToTile = (tileId: string) => {
   return [row, col];
 }
 
-export const render = (tilesetImage: HTMLImageElement | undefined, tileMap: TileMap | undefined, users: Users, context: CanvasRenderingContext2D | undefined) => {
-  if (!tilesetImage || !tileMap || !context) {
-    setTimeout(() => render(tilesetImage, tileMap, users, context), 500);
-    return;
-  }
-
+export const render = (tilesetImage: HTMLImageElement, tileMap: TileMap, users: Users, context: CanvasRenderingContext2D) => {
   context.clearRect(0, 0, TILE_SIZE * tileMap.cols, TILE_SIZE * tileMap.rows);
   tileMap.array.forEach((row, rowIndex) => {
     row.forEach((col, colIndex) => {
